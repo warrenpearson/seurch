@@ -1,0 +1,122 @@
+version: '3'
+services:
+  app:
+    build:
+      context: .
+      target: debug
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      FLASK_ENV: development
+      FLASK_APP: /app/seurch/app.py
+      PYTHONPATH: /app
+      FLASK_DEBUG: 1
+      FLASK_RUN_PORT: 5001
+    entrypoint: ./dev-entrypoint.sh
+    volumes:
+      - .:/app
+      - ${PWD}/.github/aws_credentials:/root/.aws/credentials:ro
+    ports:
+      - 5001:5001
+      - 5678:5678
+    links:
+      - postgres
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      localstack:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:12.5
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      POSTGRES_DB: "seurch_dev"
+      POSTGRES_USER: "root"
+      POSTGRES_PASSWORD: "r00t66"
+    ports:
+      - '5432:5432'
+    expose:
+      - '5432'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d seurch_dev"]
+      interval: 2s
+      timeout: 1s
+      retries: 10
+
+  migrations:
+    image: flyway/flyway:8.4.4
+    command: >
+      -url=jdbc:postgresql://postgres:5432/seurch_dev -user=root -password=r00t66 info
+      -url=jdbc:postgresql://postgres:5432/seurch_dev -user=root -password=r00t66 clean
+      -url=jdbc:postgresql://postgres:5432/seurch_dev -user=root -password=r00t66 migrate -locations=filesystem:/flyway/sql
+    volumes:
+      - ${PWD}/db:/flyway/sql
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  redis:
+    image: redis
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - 6379:6379
+
+  localstack:
+    container_name: "${LOCALSTACK_DOCKER_NAME-seurch-localstack}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    image: localstack/localstack
+    ports:
+      - 4510-4559:4510-4559
+      - 4566:4566
+    environment:
+      - DEBUG=${DEBUG-}
+      - DATA_DIR=${DATA_DIR-}
+      - HOST_TMP_FOLDER=${TMPDIR:-/tmp/}localstack
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - SERVICES=s3
+      - LS_LOG=warning
+    volumes:
+      - "${TMPDIR:-/tmp}/localstack:/tmp/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - awslocal s3 ls
+      interval: 5s
+      timeout: 10s
+      start_period: 10s
+      retries: 10
+
+  tests:
+    build:
+      context: .
+      target: debug
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      TESTING: "true"
+    profiles:
+      - donotstart
+    entrypoint: ./test-entrypoint.sh
+    volumes:
+      - .:/app
+      - ${PWD}/.github/aws_credentials:/root/.aws/credentials:ro
+    links:
+      - postgres
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      localstack:
+        condition: service_healthy
+
+
+volumes:
+  postgres:
+  migrations:
+  localstack:

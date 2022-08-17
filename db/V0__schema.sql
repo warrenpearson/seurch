@@ -1,0 +1,26 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE documents(
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  s3_bucket VARCHAR(255) NOT NULL,
+  s3_path VARCHAR(2048) NOT NULL UNIQUE,
+  s3_key VARCHAR(50) NOT NULL,
+  s3_create_date TIMESTAMP NOT NULL,
+  report_type VARCHAR(50) NOT NULL,
+  downloaded INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
+);
+
+CREATE OR REPLACE FUNCTION trigger_set_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER set_timestamp_documents
+BEFORE UPDATE ON documents
+FOR EACH ROW
+EXECUTE PROCEDURE trigger_set_timestamp();

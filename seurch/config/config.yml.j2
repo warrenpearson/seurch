@@ -1,0 +1,23 @@
+---
+environment: {{ environment_name }}
+
+application_name: {{ application_name }}
+
+app_database:
+  user: {{ app_database['user'] }}
+  password: {{ app_database['password'] }}
+  host: {{ app_database['host'] }}
+  port: {{ app_database['port'] }}
+  database: {{ app_database['database'] }}
+
+sentry:
+  dsn: {{ sentry_dsn }}
+
+honeycomb:
+  api_key: {{ honeycomb_api_key }}
+  dataset: {{ honeycomb_dataset }}
+
+s3:
+  bucket: {{ s3['bucket'] }}
+  region: {{ s3['region'] }}
+  url_endpoint: {{ s3['url_endpoint'] | default("", true) }}

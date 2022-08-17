@@ -1,0 +1,20 @@
+---
+environment_name: docker
+
+application_name: Seurch
+
+app_database:
+  user: root
+  password: r00t66
+  host: postgres
+  port: 5432
+  database: seurch_dev
+
+sentry_dsn: https://change_me@sentry.io/123456
+honeycomb_dataset: Seurch
+honeycomb_api_key: 1234
+
+s3:
+  region: us-east-1
+  bucket: seurch-uat
+  url_endpoint: http://host.docker.internal:4566
